@@ -247,8 +247,9 @@ You MUST respond ONLY with a JSON object matching this schema:
     !before.mime.includes('svg') &&
     !after.mime.includes('svg');
 
+  let lastError = null;
+
   if (canUseGemini) {
-    // Only attempt top active fast models with tight 3.5s timeout
     const fastModels = ['gemini-3.6-flash', 'gemini-flash-latest'];
     for (const model of fastModels) {
       try {
@@ -276,7 +277,7 @@ You MUST respond ONLY with a JSON object matching this schema:
         };
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        const timeoutId = setTimeout(() => controller.abort(), 25000);
 
         const response = await fetch(url, {
           method: 'POST',
@@ -295,33 +296,23 @@ You MUST respond ONLY with a JSON object matching this schema:
             console.log(`[AI Before/After] Verification succeeded using ${model}`);
             return parsed;
           }
+        } else {
+          const errBody = await response.text();
+          console.warn(`[AI Before/After] Model ${model} returned (${response.status}):`, errBody.slice(0, 150));
+          lastError = new Error(`Google API (${response.status}) on ${model}`);
         }
       } catch (err) {
-        console.warn(`[AI Before/After] Fast model ${model} skipped:`, err.message);
+        console.warn(`[AI Before/After] Model ${model} skipped:`, err.message);
+        lastError = err;
       }
     }
+
+    // If Google API fails on photos, reject completion and require retry
+    throw new Error(
+      `AI Vision verification failed: Google Gemini API error (${lastError?.message || 'Service timeout or model unavailable'}). Please verify your connection and retry uploading.`
+    );
   }
 
-  // Intelligent sub-second heuristic evaluation (for URLs, mock photos, or API timeout)
-  console.log('[AI Before/After] Evaluating via high-speed heuristic verification engine');
-  const isAmbiguousTest = (typeof afterPhoto === 'string' && afterPhoto.includes('ambiguous')) ||
-    (typeof complaintDescription === 'string' && complaintDescription.toLowerCase().includes('doubtful'));
-
-  if (isAmbiguousTest) {
-    return {
-      repairConfirmed: false,
-      confidenceScore: 54,
-      requiresHubReview: true,
-      statusRecommendation: 'Needs Hub Verification',
-      aiVerificationNotes: 'Noticeable perspective shift and shadowed lighting obscure the pipe joint. Escalated to Central Municipal Hub for manual officer sign-off.'
-    };
-  }
-
-  return {
-    repairConfirmed: true,
-    confidenceScore: 94,
-    requiresHubReview: false,
-    statusRecommendation: 'Resolved',
-    aiVerificationNotes: 'AI Vision confirmed pipeline rupture sealed and water containment restored. Surface dryness and restored soil contour verified successfully.'
-  };
+  // If photos are missing or invalid, prevent completion
+  throw new Error('Invalid or missing image data for AI verification. Please capture and upload a valid photo.');
 }
