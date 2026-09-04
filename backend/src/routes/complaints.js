@@ -284,7 +284,12 @@ router.post('/:id/hub-verify', async (req, res) => {
       data: {
         status: 'In Progress',
         hubReviewStatus: 'Rejected',
-        resolutionNotes: `Re-Work Enforced by Municipal Officer. Reason: ${officerNotes || 'After photo inconclusive or ambiguous. Field crew must re-inspect, arrest defect completely, and upload clear photo.'}`
+        afterPhotoUrl: null, // Photo deleted from DB upon rework rejection
+        aiConfidence: null,
+        aiVerificationResult: null,
+        aiVerificationNotes: null,
+        resolvedAt: null,
+        resolutionNotes: `Re-Work Enforced by Municipal Officer. Reason: ${officerNotes || 'After photo inconclusive or rejected. Field crew must re-inspect, arrest defect completely, and upload a new photo.'}`
       },
       include: { citizen: true, assignedTeam: true }
     });

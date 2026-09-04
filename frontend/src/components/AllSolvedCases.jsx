@@ -19,10 +19,10 @@ export default function AllSolvedCases({ onNavigateHome, complaints = [] }) {
   const [selectedDept, setSelectedDept] = useState('All');
   const [selectedCity, setSelectedCity] = useState('All');
 
-  // Filter only solved complaints (or complaints that have afterPhotoUrl)
+  // Filter only solved complaints that have a verified after-repair photo
   const solvedComplaints = useMemo(() => {
     return (Array.isArray(complaints) ? complaints : []).filter(c => 
-      c.status === 'Resolved' || c.afterPhotoUrl
+      c && c.status === 'Resolved' && Boolean(c.afterPhotoUrl)
     );
   }, [complaints]);
 

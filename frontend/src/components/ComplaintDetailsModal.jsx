@@ -73,7 +73,7 @@ export default function ComplaintDetailsModal({
         <div className="p-6 space-y-5 overflow-y-auto">
           
           {/* Photo Section: Side-by-Side if After Photo exists, or Single Photo */}
-          {complaint.afterPhotoUrl ? (
+          {complaint.afterPhotoUrl && (complaint.status === 'Resolved' || complaint.status === 'Needs Hub Verification') ? (
             <div className="space-y-2">
               <span className="text-[11px] uppercase font-bold tracking-wider text-slate-500 block">
                 Before & After Repair Verification
@@ -135,7 +135,7 @@ export default function ComplaintDetailsModal({
           )}
 
           {/* Incident Meta (when after photo is present) */}
-          {complaint.afterPhotoUrl && (
+          {complaint.afterPhotoUrl && (complaint.status === 'Resolved' || complaint.status === 'Needs Hub Verification') && (
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs space-y-2">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <div>
