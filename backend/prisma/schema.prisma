@@ -1,0 +1,97 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id         String      @id @default(uuid())
+  name       String
+  phone      String?     @unique
+  email      String?     @unique
+  password   String?     // For staff accounts
+  role       String      @default("citizen") // "citizen" | "staff"
+  department String?     // If staff: "Leak Repair", "Water Quality", "Water Supply", "Sewage-Drainage", "Billing-Meter", "Administration"
+  createdAt  DateTime    @default(now())
+  complaints Complaint[]
+}
+
+model MunicipalTeam {
+  id          String      @id @default(uuid())
+  name        String
+  city        String      // "Delhi" | "Ghaziabad" | "Noida"
+  area        String      // Landmark/Area e.g. "Rohini Sec-14", "Indirapuram", "Sector 62"
+  department  String      // "Leak Repair" | "Water Quality" | "Water Supply" | "Sewage-Drainage" | "General"
+  phone       String?
+  status      String      @default("Available") // "Available" | "Dispatched" | "Busy"
+  latitude    Float
+  longitude   Float
+  complaints  Complaint[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model Complaint {
+  id                   String         @id @default(uuid())
+  citizenId            String?
+  citizen              User?          @relation(fields: [citizenId], references: [id], onDelete: SetNull)
+  citizenName          String?        @default("Citizen")
+  citizenPhone         String?
+  assignedTeamId       String?
+  assignedTeam         MunicipalTeam? @relation(fields: [assignedTeamId], references: [id], onDelete: SetNull)
+  photoUrl             String         // Stored base64 data-url or static image URL
+  afterPhotoUrl        String?        // Stored base64 data-url of after-repair photo
+  clarityScore         Int            @default(0) // 0 - 100
+  clarityLabel         String         @default("Clear") // "Clear" | "Slightly Turbid" | "Contaminated-looking"
+  aiReasoning          String?        // AI reasoning explanation for transparency
+  description          String
+  urgency              String         // "Critical" | "High" | "Medium" | "Low"
+  department           String         // "Leak Repair" | "Water Quality" | "Water Supply" | "Sewage-Drainage" | "Billing-Meter"
+  latitude             Float
+  longitude            Float
+  address              String?        // Human readable address/landmark
+  status               String         @default("Assigned") // "Assigned" | "In Progress" | "Needs Hub Verification" | "Resolved"
+  resolutionNotes      String?
+  resolvedAt           DateTime?
+  aiConfidence         Float?         // 0 - 100
+  aiVerificationResult String?        // "AI_APPROVED" | "NEEDS_HUB_REVIEW" | "REJECTED"
+  aiVerificationNotes  String?        // Explanation of AI verification comparing before/after
+  hubReviewStatus      String?        // "Pending" | "Approved" | "Rejected"
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  notifications        Notification[]
+}
+
+model ConsumptionRecord {
+  id                 String   @id @default(uuid())
+  zoneId             String   @unique
+  zoneName           String
+  currentConsumption Float    // in MLD (Million Litres per Day)
+  historicalBaseline Float    // in MLD
+  deviationPercent   Float    // percentage difference
+  flagged            Boolean  // true if deviation > threshold (e.g. > 25%)
+  leakEstimateKL     Float?   // Estimated daily water lost in KL
+  latitude           Float
+  longitude          Float
+  wardNumber         Int?
+  pipelineHealth     String?  // "Critical Anomaly" | "Moderate Variance" | "Normal Flow"
+  updatedAt          DateTime @updatedAt
+}
+
+model Notification {
+  id          String     @id @default(uuid())
+  complaintId String?
+  complaint   Complaint? @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  teamId      String?
+  type        String     @default("SMS") // "SMS" | "SYSTEM" | "STATUS_UPDATE" | "TEAM_ALERT"
+  recipient   String?    // Phone number, email, or team name
+  message     String
+  read        Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+}

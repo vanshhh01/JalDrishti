@@ -1,0 +1,127 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased overflow-x-hidden;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Clean light scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #f1f5f9;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #0891b2;
+  }
+}
+
+/* Light Theme Card Utilities */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.glass-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Leaflet Container and Popup Styling */
+.leaflet-container {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 1rem;
+  background-color: #f8fafc !important;
+  font-family: inherit;
+}
+
+.leaflet-popup-content-wrapper {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 12px 30px -4px rgba(0, 0, 0, 0.12) !important;
+  padding: 4px !important;
+}
+
+.leaflet-popup-tip {
+  background: #ffffff !important;
+}
+
+/* Glowing Circular Dots for Map (No Pins) */
+.map-dot-marker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.map-dot-marker:hover {
+  transform: scale(1.35);
+  z-index: 999 !important;
+}
+
+.map-dot-core {
+  border-radius: 50%;
+  border: 2.5px solid #ffffff;
+}
+
+/* Radar pulse animation for consumption-flagged anomaly zones */
+.radar-pulse-marker {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.radar-pulse-marker .core {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background-color: #ef4444;
+  border: 2.5px solid #ffffff;
+  border-radius: 50%;
+  z-index: 2;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
+}
+
+.radar-pulse-marker .wave {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  background: rgba(239, 68, 68, 0.25);
+  border: 1.5px solid #ef4444;
+  border-radius: 50%;
+  animation: radarWave 2s infinite cubic-bezier(0, 0.2, 0.8, 1);
+  z-index: 1;
+}
+
+@keyframes radarWave {
+  0% {
+    transform: scale(0.4);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
