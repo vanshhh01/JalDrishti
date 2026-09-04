@@ -2,10 +2,10 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const GEMINI_MODELS = [
-  'gemini-1.5-flash',
-  'gemini-2.0-flash',
-  'gemini-1.5-flash-8b',
-  'gemini-1.5-pro'
+  'gemini-3.6-flash',
+  'gemini-flash-latest',
+  'gemini-2.5-flash',
+  'gemini-1.5-flash'
 ];
 
 /**
@@ -64,7 +64,7 @@ Urgency Rules:
         };
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 6000);
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
 
         const response = await fetch(url, {
           method: 'POST',
@@ -241,15 +241,15 @@ You MUST respond ONLY with a JSON object matching this schema:
     return str && typeof str === 'string' && str.length > 100 && !str.startsWith('http') && !str.startsWith('/');
   };
 
-  const canUseGemini = geminiKey && geminiKey.length > 5 && 
-                       isValidBase64(before.data) && 
-                       isValidBase64(after.data) && 
-                       !before.mime.includes('svg') && 
-                       !after.mime.includes('svg');
+  const canUseGemini = geminiKey && geminiKey.length > 5 &&
+    isValidBase64(before.data) &&
+    isValidBase64(after.data) &&
+    !before.mime.includes('svg') &&
+    !after.mime.includes('svg');
 
   if (canUseGemini) {
-    // Only attempt top fast models (gemini-1.5-flash) with tight 3.5s timeout
-    const fastModels = ['gemini-1.5-flash', 'gemini-2.0-flash'];
+    // Only attempt top active fast models with tight 3.5s timeout
+    const fastModels = ['gemini-3.6-flash', 'gemini-flash-latest'];
     for (const model of fastModels) {
       try {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
@@ -276,7 +276,7 @@ You MUST respond ONLY with a JSON object matching this schema:
         };
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3500);
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
 
         const response = await fetch(url, {
           method: 'POST',
@@ -305,8 +305,8 @@ You MUST respond ONLY with a JSON object matching this schema:
   // Intelligent sub-second heuristic evaluation (for URLs, mock photos, or API timeout)
   console.log('[AI Before/After] Evaluating via high-speed heuristic verification engine');
   const isAmbiguousTest = (typeof afterPhoto === 'string' && afterPhoto.includes('ambiguous')) ||
-                          (typeof complaintDescription === 'string' && complaintDescription.toLowerCase().includes('doubtful'));
-  
+    (typeof complaintDescription === 'string' && complaintDescription.toLowerCase().includes('doubtful'));
+
   if (isAmbiguousTest) {
     return {
       repairConfirmed: false,
