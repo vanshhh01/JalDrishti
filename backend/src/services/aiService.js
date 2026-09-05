@@ -249,10 +249,14 @@ You MUST respond ONLY with a JSON object matching this schema:
     isValidBase64(after.data) &&
     !isAfterSvg;
 
-  let lastError = null;
-
   if (canUseGemini) {
-    const fastModels = ['gemini-3.6-flash', 'gemini-flash-latest'];
+    const fastModels = [
+      'gemini-3.1-flash-lite',
+      'gemini-3.5-flash-lite',
+      'gemini-flash-lite-latest',
+      'gemini-3.6-flash',
+      'gemini-flash-latest'
+    ];
     for (const model of fastModels) {
       try {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
@@ -315,15 +319,9 @@ You MUST respond ONLY with a JSON object matching this schema:
       }
     }
 
-    // If models failed (e.g. rate limit / network), provide a graceful audit review rather than hard crash
-    console.warn('[AI Verification] Gemini API returned error, falling back to Hub Review mode:', lastError?.message);
-    return {
-      repairConfirmed: false,
-      confidenceScore: 62,
-      requiresHubReview: true,
-      statusRecommendation: "Needs Hub Verification",
-      aiVerificationNotes: `Automated inspection flagged for manual hub review. (API Response: ${lastError?.message || 'Network delay'}). Field crew photo recorded.`
-    };
+    // Strict Mode: No fake 62% fallback score! Throw the real Google API error
+    console.error('[AI Verification] All Gemini models failed:', lastError?.message);
+    throw new Error(`AI Vision verification failed: Google Gemini API error (${lastError?.message || 'Quota limit or service unavailable'}). Please verify your connection or retry.`);
   }
 
   // If After photo is completely missing or totally empty
@@ -331,12 +329,6 @@ You MUST respond ONLY with a JSON object matching this schema:
     throw new Error('Please capture and upload a valid After-repair photo.');
   }
 
-  // If Gemini API key is not configured on server (Render environment)
-  return {
-    repairConfirmed: true,
-    confidenceScore: 88,
-    requiresHubReview: false,
-    statusRecommendation: "Resolved",
-    aiVerificationNotes: "Visual verification completed. Field repair photo submitted and archived."
-  };
+  // If Gemini API key is not configured
+  throw new Error('GEMINI_API_KEY is not configured on the backend server.');
 }
