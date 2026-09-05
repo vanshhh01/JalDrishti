@@ -70,6 +70,21 @@ router.post('/', async (req, res) => {
       }
     }
 
+    // Auto-create or get citizen record
+    let user = await prisma.user.findFirst({
+      where: { name: citizenName, role: 'citizen' }
+    });
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          name: citizenName,
+          phone: `cit-${Date.now()}`,
+          role: 'citizen'
+        }
+      });
+    }
+
     const lat = parseFloat(latitude) || 28.6475;
     const lng = parseFloat(longitude) || 77.3150;
     const finalDescription = userDescription || aiAnalysis.description || 'Reported water infrastructure issue.';
@@ -79,7 +94,7 @@ router.post('/', async (req, res) => {
     // Save complaint into Database
     const complaint = await prisma.complaint.create({
       data: {
-        citizenName: citizenName,
+        citizenId: user.id,
         photoUrl: photoBase64,
         clarityScore: 80,
         clarityLabel: 'Detected',
@@ -91,6 +106,9 @@ router.post('/', async (req, res) => {
         longitude: lng,
         address: address || 'Municipal Ward Area, Delhi NCR',
         status: 'Assigned'
+      },
+      include: {
+        citizen: true
       }
     });
 
@@ -216,7 +234,8 @@ router.patch('/:id/status', async (req, res) => {
  * Main Municipal Hub officer reviews ambiguous After-photo and either approves or requests re-work
 /**
  * POST /api/complaints/:id/hub-verify
- * Municipal Hub officer reviews ambiguous After-photo and either approves work or enforces re-work
+ * Zero-Corruption Policy: Officers CANNOT manually approve doubtful repairs.
+ * They can only enforce re-work and dispatch clarification notes to the field crew.
  */
 router.post('/:id/hub-verify', async (req, res) => {
   try {
@@ -231,65 +250,19 @@ router.post('/:id/hub-verify', async (req, res) => {
     if (!complaint) return res.status(404).json({ error: 'Complaint not found' });
 
     if (decision === 'Approved') {
-      // 1. Human Officer Approves the Work and Closes the Complaint
-      const updated = await prisma.complaint.update({
-        where: { id },
-        data: {
-          status: 'Resolved',
-          hubReviewStatus: 'Approved',
-          resolvedAt: new Date(),
-          resolutionNotes: `Verified & Approved by Municipal Officer. Notes: ${officerNotes || 'Field repair inspected and accepted. Pipeline restored to normal operation.'}`
-        },
-        include: { citizen: true, assignedTeam: true }
-      });
-
-      // 2. Notify Citizen via SMS
-      await prisma.notification.create({
-        data: {
-          complaintId: id,
-          type: 'SMS',
-          recipient: complaint.citizenPhone || complaint.citizen?.phone || 'Citizen',
-          message: `🎉 Great News! Your reported water issue #${id.slice(0, 8).toUpperCase()} has been reviewed and APPROVED by the Municipal Officer. Case marked as Resolved.`
-        }
-      });
-
-      // 3. Free up team if no other active jobs
-      if (complaint.assignedTeamId) {
-        const otherActive = await prisma.complaint.count({
-          where: {
-            assignedTeamId: complaint.assignedTeamId,
-            id: { not: id },
-            status: { in: ['Assigned', 'In Progress', 'Needs Hub Verification'] }
-          }
-        });
-
-        if (otherActive === 0) {
-          await prisma.municipalTeam.update({
-            where: { id: complaint.assignedTeamId },
-            data: { status: 'Available' }
-          });
-        }
-      }
-
-      return res.json({ 
-        success: true, 
-        complaint: updated,
-        message: 'Complaint successfully approved and closed as Resolved.' 
+      // Anti-Corruption Rule: No manual override
+      return res.status(403).json({
+        error: 'Zero-Corruption Protocol: Municipal officers cannot manually bypass AI quality verification. The repair must be verified by AI with conclusive visual evidence or re-worked by the crew.'
       });
     }
 
-    // Otherwise: Enforce Re-work to field crew
+    // Enforce Re-work to field crew
     const updated = await prisma.complaint.update({
       where: { id },
       data: {
         status: 'In Progress',
         hubReviewStatus: 'Rejected',
-        afterPhotoUrl: null, // Photo deleted from DB upon rework rejection
-        aiConfidence: null,
-        aiVerificationResult: null,
-        aiVerificationNotes: null,
-        resolvedAt: null,
-        resolutionNotes: `Re-Work Enforced by Municipal Officer. Reason: ${officerNotes || 'After photo inconclusive or rejected. Field crew must re-inspect, arrest defect completely, and upload a new photo.'}`
+        resolutionNotes: `Audit Flagged: Re-Work Enforced by Municipal Command. Reason: ${officerNotes || 'After photo inconclusive or ambiguous. Field crew must re-inspect, arrest the defect completely, and upload clear photo.'}`
       },
       include: { citizen: true, assignedTeam: true }
     });
@@ -301,16 +274,12 @@ router.post('/:id/hub-verify', async (req, res) => {
           teamId: complaint.assignedTeamId,
           type: 'TEAM_ALERT',
           recipient: complaint.assignedTeam?.name,
-          message: `⚠️ Re-Work Required for #${id.slice(0, 8).toUpperCase()}: Officer rejected repair photo. Reason: ${officerNotes || 'Repair visual proof inconclusive'}. Please rectify on-site and re-upload photo.`
+          message: `⚠️ Re-Work Required for #${id.slice(0, 8).toUpperCase()}: AI verification failed and re-work was enforced. Reason: ${officerNotes || 'Repair visual proof inconclusive'}. Please rectify on-site and re-upload photo.`
         }
       });
     }
 
-    return res.json({ 
-      success: true, 
-      complaint: updated,
-      message: 'Re-work order dispatched to field crew.' 
-    });
+    return res.json({ success: true, complaint: updated });
   } catch (error) {
     console.error('Error in hub verification:', error);
     res.status(500).json({ error: error.message });
